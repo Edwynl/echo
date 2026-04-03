@@ -219,25 +219,85 @@ src/
 
 ```bash
 git add .
-git commit -m "Initial commit"
+git commit -m "feat: prepare for Vercel deployment"
 git push origin main
 ```
 
-### 2. 导入到 Vercel
+### 2. 创建 Vercel Postgres 数据库（推荐）
+
+SQLite 在 Vercel Serverless 环境中无法持久化，推荐使用 Vercel Postgres：
+
+1. 访问 https://vercel.com/dashboard
+2. 点击 "Add New..." -> "Database"
+3. 选择 "Postgres" 并创建
+4. 复制连接字符串，格式如下：
+   ```
+   postgresql://user:password@host:5432/database?sslmode=require
+   ```
+
+### 3. 修改 Prisma 配置
+
+如果使用 Vercel Postgres，需要修改 `prisma/schema.prisma`：
+
+```prisma
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+```
+
+然后在本地执行 `npx prisma db push` 并生成客户端 `npx prisma generate`。
+
+### 4. 导入到 Vercel
 
 1. 访问 https://vercel.com
 2. 点击 "Add New..." -> "Project"
 3. 选择 GitHub 仓库
-4. 配置环境变量
+4. 在 "Environment Variables" 中添加以下变量：
+
+| 变量名 | 值 | 说明 |
+|--------|-----|------|
+| `DATABASE_URL` | `postgresql://...` | Vercel Postgres 连接字符串 |
+| `YOUTUBE_API_KEY` | `AIza...` | YouTube API 密钥 |
+| `MINIMAX_API_KEY` | `sk-cp...` | MiniMax API 密钥 |
+| `MINIMAX_BASE_URL` | `https://api.minimax.io/v1` | MiniMax API 地址 |
+| `MINIMAX_MODEL` | `MiniMax-M2.7` | MiniMax 模型名称 |
+| `CRON_SECRET` | `随机字符串` | Cron 作业安全密钥 |
+
 5. 点击 Deploy
 
-### 3. 配置定时任务 (可选)
+### 5. 配置定时任务
 
-在 Vercel 项目设置中：
-1. 前往 Settings -> Cron Jobs
-2. 添加新的 Cron Job:
+Vercel 会根据 `vercel.json` 自动配置 Cron Job。也可手动设置：
+
+1. 前往项目 Settings -> Cron Jobs
+2. 确保已配置：
    - Path: `/api/cron/sync`
-   - Schedule: `0 6 * * *` (每天 UTC 6 点，即北京时间 14 点)
+   - Schedule: `0 6 * * *` (每天 UTC 6 点 = 北京时间 14 点)
+   - 方法: POST
+
+### 6. 本地开发连接 Vercel Postgres
+
+```bash
+# 安装 Vercel CLI
+npm i -g vercel
+
+# 登录
+vercel login
+
+# 链接数据库到本地
+vercel env pull .env.local
+```
+
+### 常见问题
+
+**构建失败？**
+- 确保 `npm run build` 能正常运行
+- 检查 `postinstall` 脚本是否包含 `prisma generate`
+
+**Cron 作业不执行？**
+- 确认已设置 `CRON_SECRET` 环境变量
+- 检查 Vercel 项目的 Cron Jobs 配置
 
 ## 优化记录
 

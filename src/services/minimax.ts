@@ -46,9 +46,8 @@ export class MiniMaxService {
 
   constructor() {
     this.apiKey = process.env.MINIMAX_API_KEY || ''
-    this.baseUrl = process.env.MINIMAX_BASE_URL || 'https://api.minimax.chat/v1'
-    // Use MiniMax-Text-01 model as per API guide
-    this.model = process.env.MINIMAX_MODEL || 'MiniMax-Text-01'
+    this.baseUrl = process.env.MINIMAX_BASE_URL || 'https://api.minimax.io/v1'
+    this.model = process.env.MINIMAX_MODEL || 'MiniMax-M2.7'
   }
 
   /**

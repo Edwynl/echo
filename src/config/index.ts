@@ -47,7 +47,7 @@ export const GITHUB_CONFIG = {
  * MiniMax API Configuration
  */
 export const MINIMAX_CONFIG = {
-  API_BASE: process.env.MINIMAX_API_BASE || 'https://api.minimax.chat/v1',
+  API_BASE: process.env.MINIMAX_BASE_URL || 'https://api.minimax.io/v1',
   API_KEY: process.env.MINIMAX_API_KEY,
   TIMEOUT: 60000,
   RETRY: {

@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { queueAddItem, queueGetStatus, queueRemoveItem, queueIsChannelInQueue, startQueueProcessor } from '@/lib/queue-processor'
+import { queueAddItem, queueGetStatus, queueRemoveItem, queueIsChannelInQueue } from '@/lib/queue-processor'
 import type { QueueItem } from '@/lib/queue-types'
 
 export const dynamic = 'force-dynamic'
@@ -51,18 +51,16 @@ export async function POST(request: NextRequest) {
     // Persist to database
     await queueAddItem(queueItem)
 
-    // Start processor if not running
-    startQueueProcessor()
-
     const status = await queueGetStatus()
     const queuePosition = status.queue.findIndex(i => i.id === queueItem.id) + 1
 
     return NextResponse.json({
       success: true,
-      message: 'Channel added to queue',
+      message: 'Channel added to queue. Sync will run via scheduled cron job.',
       queueId: queueItem.id,
       queuePosition,
       estimatedTime: queuePosition * 3,
+      note: 'In serverless environment, queue is processed by Vercel Cron jobs.',
     })
   } catch (error) {
     console.error('Error adding to queue:', error)
