@@ -15,14 +15,11 @@ export async function GET() {
     databaseUrlHost: process.env.DATABASE_URL?.split('@')[1]?.split('/')[0] || 'none'
   }
 
-  let dbInfo = { error: 'not tested' }
   try {
     const channels = await prisma.channel.count()
     const syncQueue = await prisma.syncQueue.count()
-    dbInfo = { channels, syncQueue }
+    return NextResponse.json({ env: envInfo, db: { channels, syncQueue } })
   } catch (error) {
-    dbInfo = { error: error instanceof Error ? error.message : String(error) }
+    return NextResponse.json({ env: envInfo, db: { error: error instanceof Error ? error.message : String(error) } })
   }
-
-  return NextResponse.json({ env: envInfo, db: dbInfo })
 }
