@@ -56,7 +56,7 @@ function rowToQueueItem(row: Record<string, unknown>): QueueItem {
 
 async function dbGetAllQueueItems(): Promise<QueueItem[]> {
   const rows = await prisma.$queryRaw<Record<string, unknown>[]>`
-    SELECT * FROM SyncQueue
+    SELECT * FROM "SyncQueue"
     ORDER BY
       CASE status
         WHEN 'processing' THEN 0
@@ -64,28 +64,28 @@ async function dbGetAllQueueItems(): Promise<QueueItem[]> {
         WHEN 'failed'      THEN 2
         WHEN 'completed'   THEN 3
       END,
-      addedAt ASC
+      "addedAt" ASC
   `
   return rows.map(rowToQueueItem)
 }
 
 async function dbGetQueueItem(id: string): Promise<QueueItem | null> {
   const rows = await prisma.$queryRaw<Record<string, unknown>[]>`
-    SELECT * FROM SyncQueue WHERE id = ${id}
+    SELECT * FROM "SyncQueue" WHERE id = ${id}
   `
   return rows[0] ? rowToQueueItem(rows[0]) : null
 }
 
 export async function dbGetPendingItem(): Promise<QueueItem | null> {
   const rows = await prisma.$queryRaw<Record<string, unknown>[]>`
-    SELECT * FROM SyncQueue WHERE status = 'pending' ORDER BY addedAt ASC LIMIT 1
+    SELECT * FROM "SyncQueue" WHERE status = 'pending' ORDER BY "addedAt" ASC LIMIT 1
   `
   return rows[0] ? rowToQueueItem(rows[0]) : null
 }
 
 async function dbInsertQueueItem(item: QueueItem): Promise<void> {
   await prisma.$executeRaw`
-    INSERT INTO SyncQueue (id, channelId, channelName, channelThumbnail, status, addedAt, progressCurrent, progressTotal)
+    INSERT INTO "SyncQueue" (id, "channelId", "channelName", "channelThumbnail", status, "addedAt", "progressCurrent", "progressTotal")
     VALUES (
       ${item.id},
       ${item.channelId},
@@ -140,22 +140,22 @@ export async function dbUpdateQueueItem(
 
   values.push(id)
   await prisma.$executeRawUnsafe(
-    `UPDATE SyncQueue SET ${sets.join(', ')} WHERE id = ?`,
+    `UPDATE "SyncQueue" SET ${sets.join(', ')} WHERE id = ?`,
     ...values
   )
 }
 
 async function dbDeleteQueueItem(id: string): Promise<void> {
-  await prisma.$executeRaw`DELETE FROM SyncQueue WHERE id = ${id}`
+  await prisma.$executeRaw`DELETE FROM "SyncQueue" WHERE id = ${id}`
 }
 
 async function dbClearCompleted(): Promise<void> {
-  await prisma.$executeRaw`DELETE FROM SyncQueue WHERE status = 'completed'`
+  await prisma.$executeRaw`DELETE FROM "SyncQueue" WHERE status = 'completed'`
 }
 
 async function dbIsChannelInQueue(channelId: string): Promise<boolean> {
   const rows = await prisma.$queryRaw<Record<string, unknown>[]>`
-    SELECT id FROM SyncQueue WHERE channelId = ${channelId} AND status != 'completed' LIMIT 1
+    SELECT id FROM "SyncQueue" WHERE "channelId" = ${channelId} AND status != 'completed' LIMIT 1
   `
   return rows.length > 0
 }
@@ -211,11 +211,11 @@ export function startQueueProcessor(): void {
 
 async function recoverStaleItems(): Promise<void> {
   const rows = await prisma.$queryRaw<Record<string, unknown>[]>`
-    SELECT * FROM SyncQueue WHERE status = 'processing'
+    SELECT * FROM "SyncQueue" WHERE status = 'processing'
   `
   for (const row of rows) {
     await prisma.$executeRaw`
-      UPDATE SyncQueue SET status = 'pending', startedAt = NULL
+      UPDATE "SyncQueue" SET status = 'pending', "startedAt" = NULL
       WHERE id = ${row.id as string}
     `
     console.log(`[Queue] Recovered stale item: ${row.channelName}`)
