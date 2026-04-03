@@ -123,7 +123,7 @@ export class WebScraperService {
   // Extract site name from HTML
   private extractSiteName(html: string, url: string): string | undefined {
     // Try og:site_name
-    let match = html.match(/<meta[^>]*property=["']og:site_name["'][^>]*content=["']([^"']+)["']/i)
+    const match = html.match(/<meta[^>]*property=["']og:site_name["'][^>]*content=["']([^"']+)["']/i)
     if (match) return match[1]
 
     // Fallback to domain name
