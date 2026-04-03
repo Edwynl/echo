@@ -5,6 +5,8 @@ import { processBlogContent, slugify } from '@/lib/utils'
 import { processWithRateLimit, summarizeResults } from '@/lib/concurrency'
 import { checkRateLimit, getClientId, getRateLimitHeaders } from '@/lib/rate-limit'
 
+export const dynamic = 'force-dynamic'
+
 const ENDPOINT = '/api/blogs/generate-missing'
 
 // Video type for processing

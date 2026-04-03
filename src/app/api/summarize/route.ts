@@ -6,6 +6,7 @@ import { webScraperService } from '@/services/web-scraper'
 import { minimaxService } from '@/services/minimax'
 
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 interface SummarizeRequest {
   url: string

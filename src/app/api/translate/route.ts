@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { MiniMaxService } from '@/services/minimax'
 
+export const dynamic = 'force-dynamic'
+
 // POST /api/translate - Translate content using MiniMax AI
 export async function POST(request: NextRequest) {
   try {

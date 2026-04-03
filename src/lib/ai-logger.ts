@@ -172,7 +172,7 @@ export function withAILogging<T>(
   options: { model?: string } = {}
 ): Promise<T> {
   const startTime = Date.now()
-  let retryCount = 0
+  const retryCount = 0
 
   return fn()
     .then((result) => {

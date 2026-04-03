@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { MiniMaxService } from '@/services/minimax'
 
+export const dynamic = 'force-dynamic'
+
 const minimaxService = new MiniMaxService()
 
 // Get LLM service based on provider setting

@@ -120,8 +120,10 @@ async function processQueueItems(results: {
   let pendingItem = await dbGetPendingItem()
 
   while (pendingItem) {
+    const currentItemId = pendingItem.id
+    const currentItemName = pendingItem.channelName
     try {
-      console.log(`[Cron] Processing queue item: ${pendingItem.channelName}`)
+      console.log(`[Cron] Processing queue item: ${currentItemName}`)
 
       await dbUpdateQueueItem(pendingItem.id, {
         status: 'processing',
@@ -189,7 +191,7 @@ async function processQueueItems(results: {
 
           newVideosCount++
 
-          await dbUpdateQueueItem(pendingItem.id, {
+          await dbUpdateQueueItem(currentItemId, {
             progress: {
               current: newVideosCount,
               total: MAX_NEW_VIDEOS,
@@ -223,10 +225,10 @@ async function processQueueItems(results: {
       results.newVideos += newVideosCount
       results.blogsGenerated += blogsCount
 
-      console.log(`[Cron] Completed: ${pendingItem.channelName} — ${blogsCount} blogs generated`)
+      console.log(`[Cron] Completed: ${currentItemName} — ${blogsCount} blogs generated`)
     } catch (error) {
-      console.error(`[Cron] Failed queue item ${pendingItem.id}:`, error)
-      await dbUpdateQueueItem(pendingItem.id, {
+      console.error(`[Cron] Failed queue item ${currentItemId}:`, error)
+      await dbUpdateQueueItem(currentItemId, {
         status: 'failed',
         completedAt: new Date().toISOString(),
         error: error instanceof Error ? error.message : 'Unknown error'

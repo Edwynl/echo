@@ -76,7 +76,7 @@ async function dbGetQueueItem(id: string): Promise<QueueItem | null> {
   return rows[0] ? rowToQueueItem(rows[0]) : null
 }
 
-async function dbGetPendingItem(): Promise<QueueItem | null> {
+export async function dbGetPendingItem(): Promise<QueueItem | null> {
   const rows = await prisma.$queryRaw<Record<string, unknown>[]>`
     SELECT * FROM SyncQueue WHERE status = 'pending' ORDER BY addedAt ASC LIMIT 1
   `
@@ -99,7 +99,7 @@ async function dbInsertQueueItem(item: QueueItem): Promise<void> {
   `
 }
 
-async function dbUpdateQueueItem(
+export async function dbUpdateQueueItem(
   id: string,
   updates: Partial<QueueItem>
 ): Promise<void> {

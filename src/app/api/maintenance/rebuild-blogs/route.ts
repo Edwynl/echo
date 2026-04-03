@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { minimaxService } from '@/services/minimax'
 import { processWithRateLimit, summarizeResults } from '@/lib/concurrency'
 
+export const dynamic = 'force-dynamic'
+
 // Blog type for processing
 interface BlogToProcess {
   id: string

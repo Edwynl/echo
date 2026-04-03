@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     // Generate blog using AI
     let blogContent = ''
     let finalTitle = finalTitleInput || ''
-    let coverImage = ''
+    const coverImage = ''
 
     try {
       if (type === 'md') {

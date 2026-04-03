@@ -5,6 +5,7 @@ import { getTranscript } from '@/lib/youtube-transcript'
 import { uniqueSlug } from '@/lib/utils'
 
 const minimaxService = new MiniMaxService()
+export const dynamic = 'force-dynamic'
 
 // POST /api/videos/generate - Generate blog for a specific video
 export async function POST(request: NextRequest) {

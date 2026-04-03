@@ -119,7 +119,7 @@ export function handleError(error: unknown, requestId?: string): ApiResponse {
 
   // Prisma errors
   if (isPrismaError(error)) {
-    return handlePrismaError(error, requestId)
+    return handlePrismaError(error as Record<string, unknown>, requestId)
   }
 
   // Fetch/Network errors
@@ -169,13 +169,14 @@ function isPrismaError(error: unknown): boolean {
  */
 function handlePrismaError(error: Record<string, unknown>, requestId?: string): ApiResponse {
   const prismaCode = error.code as string
+  const meta = error.meta as Record<string, unknown> | undefined
 
   switch (prismaCode) {
     case 'P2002': // Unique constraint violation
       return errorResponse(
         ErrorCodes.DUPLICATE_ENTRY,
         'A record with this value already exists',
-        { field: error.meta?.fieldName },
+        { field: meta?.fieldName },
         requestId
       )
     case 'P2025': // Record not found
@@ -247,6 +248,6 @@ export function withErrorHandling<T>(
   try {
     return handler()
   } catch (error) {
-    return Promise.resolve(handleError(error, requestId))
+    return Promise.resolve(handleError(error, requestId)) as Promise<ApiResponse<T>>
   }
 }

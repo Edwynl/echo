@@ -1,4 +1,5 @@
 'use client'
+/* eslint-disable react-hooks/rules-of-hooks */
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
@@ -8,6 +9,7 @@ import { ArrowLeft, Loader2, Share2, ExternalLink, Youtube, MessageCircle, Bookm
 import { formatDate, decodeHtmlEntities, processBlogContent } from '@/lib/utils'
 import { useI18n } from '@/lib/i18n'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
+import { useCodeBlock } from '@/components/useCodeBlock'
 import remarkGfm from 'remark-gfm'
 
 // Dynamically import ReactMarkdown to reduce initial bundle size
@@ -679,40 +681,10 @@ export default function BlogPost({ params }: { params: { slug: string } }) {
                 code({ inline, className, children, ...props }: any) {
                   const match = /language-(\w+)/.exec(className || '')
                   const value = String(children).replace(/\n$/, '')
-                  const [copied, setCopied] = useState(false)
-                  const [mermaidSvg, setMermaidSvg] = useState<string | null>(null)
+                  const isMermaid = !inline && className === 'language-mermaid'
+                  const { copied, mermaidSvg, handleCopy } = useCodeBlock(value, isMermaid)
 
-                  // Handle Mermaid - dynamically imported only when needed (~500KB savings)
-                  useEffect(() => {
-                    if (!inline && className === 'language-mermaid') {
-                      const renderMermaid = async () => {
-                        try {
-                          const mermaidLib = (await import('mermaid')).default
-                          mermaidLib.initialize({
-                            startOnLoad: false,
-                            theme: 'neutral',
-                            securityLevel: 'loose',
-                            fontFamily: 'inherit',
-                            htmlLabels: false,
-                          })
-                          const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`
-                          const { svg } = await mermaidLib.render(id, value)
-                          setMermaidSvg(svg)
-                        } catch (err) {
-                          console.error('Mermaid syntax error:', err)
-                        }
-                      }
-                      renderMermaid()
-                    }
-                  }, [inline, className, value])
-
-                  const handleCopy = () => {
-                    navigator.clipboard.writeText(value)
-                    setCopied(true)
-                    setTimeout(() => setCopied(false), 2000)
-                  }
-
-                  if (!inline && className === 'language-mermaid') {
+                  if (isMermaid) {
                     return (
                       <div className="my-10 flex flex-col items-center w-full">
                         <div
