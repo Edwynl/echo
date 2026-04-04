@@ -103,46 +103,27 @@ export async function dbUpdateQueueItem(
   id: string,
   updates: Partial<QueueItem>
 ): Promise<void> {
-  const sets: string[] = []
-  const values: unknown[] = []
+  const data: Record<string, unknown> = {}
 
-  if (updates.status !== undefined) {
-    sets.push('status = ?')
-    values.push(updates.status)
-  }
-  if (updates.startedAt !== undefined) {
-    sets.push('startedAt = ?')
-    values.push(new Date(updates.startedAt))
-  }
-  if (updates.completedAt !== undefined) {
-    sets.push('completedAt = ?')
-    values.push(new Date(updates.completedAt))
-  }
+  if (updates.status !== undefined) data.status = updates.status
+  if (updates.startedAt !== undefined) data.startedAt = new Date(updates.startedAt)
+  if (updates.completedAt !== undefined) data.completedAt = new Date(updates.completedAt)
   if (updates.progress !== undefined) {
-    sets.push('progressCurrent = ?', 'progressTotal = ?', 'currentVideoTitle = ?')
-    values.push(updates.progress.current, updates.progress.total, updates.progress.currentVideoTitle || null)
+    data.progressCurrent = updates.progress.current
+    data.progressTotal = updates.progress.total
+    data.currentVideoTitle = updates.progress.currentVideoTitle || null
   }
   if (updates.result !== undefined) {
-    sets.push('resultNewVideos = ?', 'resultBlogsGenerated = ?', 'resultSkipped = ?', 'resultErrors = ?')
-    values.push(
-      updates.result.newVideos,
-      updates.result.blogsGenerated,
-      updates.result.skipped,
-      JSON.stringify(updates.result.errors)
-    )
+    data.resultNewVideos = updates.result.newVideos
+    data.resultBlogsGenerated = updates.result.blogsGenerated
+    data.resultSkipped = updates.result.skipped
+    data.resultErrors = JSON.stringify(updates.result.errors)
   }
-  if (updates.error !== undefined) {
-    sets.push('error = ?')
-    values.push(updates.error)
-  }
+  if (updates.error !== undefined) data.error = updates.error
 
-  if (sets.length === 0) return
+  if (Object.keys(data).length === 0) return
 
-  values.push(id)
-  await prisma.$executeRawUnsafe(
-    `UPDATE "SyncQueue" SET ${sets.join(', ')} WHERE id = ?`,
-    ...values
-  )
+  await prisma.syncQueue.update({ where: { id }, data })
 }
 
 async function dbDeleteQueueItem(id: string): Promise<void> {

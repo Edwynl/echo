@@ -41,3 +41,5 @@ yt-knowledge-base/nul
 # SQLite database files
 *.db
 *.db-journal
+
+.vercel

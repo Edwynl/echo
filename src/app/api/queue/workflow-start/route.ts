@@ -1,52 +1,45 @@
 /**
- * Cron job for automatic video fetching and blog generation
- * This endpoint is called by Vercel Cron daily at 6:00 AM UTC
+ * Queue Workflow Start API
+ * POST - Start the sync queue workflow (Vercel only)
  *
- * Uses Vercel Workflows on Vercel, direct processing locally
+ * Falls back to direct processing in local development
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
-export async function POST(request: NextRequest) {
-  // Verify cron secret (recommended for security)
-  const authHeader = request.headers.get('authorization')
-  const cronSecret = process.env.CRON_SECRET
-
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
+export async function POST() {
+  // Check if we're running on Vercel (workflows available)
   const isVercel = !!process.env.VERCEL || !!process.env.AWS_REGION
 
   if (isVercel) {
-    // Vercel - use durable workflow
+    // Vercel production/preview - use durable workflow
     try {
       const { start } = await import('workflow')
       const { syncQueueWorkflow } = await import('@/workflows/sync-queue')
 
-      console.log('[Cron] Starting sync queue workflow on Vercel')
+      console.log('[Workflow API] Starting sync queue workflow on Vercel')
       const run = await start(syncQueueWorkflow, [])
 
-      console.log('[Cron] Workflow triggered:', run.runId)
+      console.log('[Workflow API] Workflow started:', run.runId)
 
       return NextResponse.json({
         success: true,
         runId: run.runId,
-        message: 'Sync workflow started - processing in background',
+        message: 'Sync queue workflow started',
         environment: 'vercel'
       })
     } catch (error) {
-      console.error('[Cron] Error starting workflow:', error)
+      console.error('[Workflow API] Error starting workflow:', error)
       return NextResponse.json({
         success: false,
         error: error instanceof Error ? error.message : String(error)
       }, { status: 500 })
     }
   } else {
-    // Local - delegate to workflow-start endpoint
-    console.log('[Cron] Delegating to workflow-start for local processing')
+    // Local development - use direct processing
+    console.log('[Workflow API] Local dev mode - using direct processing')
 
     const { dbGetPendingItem, dbUpdateQueueItem, queueGetStatus } = await import('@/lib/queue-processor')
     const { prisma } = await import('@/lib/prisma')
@@ -62,6 +55,7 @@ export async function POST(request: NextRequest) {
     const MAX_VIDEOS_PER_CHANNEL = 50
 
     try {
+      const queueStatus = await queueGetStatus()
       let pendingItem = await dbGetPendingItem()
 
       if (!pendingItem) {
@@ -80,7 +74,7 @@ export async function POST(request: NextRequest) {
       }
 
       while (pendingItem) {
-        console.log(`[Cron] Processing: ${pendingItem.channelName}`)
+        console.log(`[Workflow API] Processing: ${pendingItem.channelName}`)
 
         await dbUpdateQueueItem(pendingItem.id, {
           status: 'processing',
@@ -208,15 +202,14 @@ export async function POST(request: NextRequest) {
               itemBlogs++
               results.blogsGenerated++
             } catch (e) {
-              console.error(`[Cron] Blog error: ${video.title}`, e)
+              console.error(`[Workflow API] Blog error: ${video.title}`, e)
               itemErrors.push(`${video.title}: ${e}`)
             }
 
-            // Rate limit delay
             await new Promise(resolve => setTimeout(resolve, 3000))
 
           } catch (e) {
-            console.error(`[Cron] Video error: ${video.title}`, e)
+            console.error(`[Workflow API] Video error: ${video.title}`, e)
             itemErrors.push(`${video.title}: ${e}`)
           }
         }
@@ -233,7 +226,7 @@ export async function POST(request: NextRequest) {
         })
 
         results.processed++
-        console.log(`[Cron] Completed: ${channel.name}`)
+        console.log(`[Workflow API] Completed: ${channel.name}`)
 
         pendingItem = await dbGetPendingItem()
       }
@@ -241,20 +234,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         ...results,
-        message: `Processed ${results.processed} channels, ${results.newVideos} videos, ${results.blogsGenerated} blogs`,
         environment: 'local'
       })
 
     } catch (error) {
-      console.error('[Cron] Fatal error:', error)
+      console.error('[Workflow API] Fatal error:', error)
       return NextResponse.json({
         success: false,
         error: error instanceof Error ? error.message : String(error)
       }, { status: 500 })
     }
   }
-}
-
-export async function GET(request: NextRequest) {
-  return POST(request)
 }

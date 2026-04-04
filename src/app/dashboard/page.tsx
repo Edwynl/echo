@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Youtube, Trash2, RefreshCw, BookOpen, Settings, ArrowLeft, Loader2, Globe, FileText, Globe2, X, AlertTriangle, Video, Book, Database, Github, ArrowRight, Sparkles, Zap, ListOrdered, CheckCircle, Clock, AlertCircle } from 'lucide-react'
+import { Youtube, Trash2, RefreshCw, BookOpen, Settings, ArrowLeft, Loader2, Globe, FileText, Globe2, X, AlertTriangle, Video, Book, Database, Github, ArrowRight, Sparkles, Zap, ListOrdered, CheckCircle, Clock, AlertCircle, Play, XCircle } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
 import { decodeHtmlEntities, truncate } from '@/lib/utils'
 
@@ -394,6 +394,50 @@ export default function Dashboard() {
     }
   }
 
+  const startProcessing = async () => {
+    try {
+      const res = await fetch('/api/queue/workflow-start', { method: 'POST' })
+      const data = await res.json()
+      if (res.ok) {
+        triggerToast(isEnglish ? 'Processing started' : '已开始处理', 'success')
+        // Refresh queue status
+        const statusRes = await fetch('/api/queue')
+        if (statusRes.ok) {
+          const statusData = await statusRes.json()
+          setQueueStatus(statusData)
+          try { sessionStorage.setItem('queueStatus', JSON.stringify(statusData)) } catch {}
+        }
+      } else {
+        triggerToast(data.error || (isEnglish ? 'Failed to start' : '启动失败'), 'error')
+      }
+    } catch (err) {
+      console.error('Error starting processing:', err)
+      triggerToast(isEnglish ? 'Failed to start' : '启动失败', 'error')
+    }
+  }
+
+  const cancelQueueItem = async (queueId: string) => {
+    try {
+      const res = await fetch(`/api/queue/add?queueId=${queueId}`, { method: 'DELETE' })
+      if (res.ok) {
+        triggerToast(isEnglish ? 'Cancelled' : '已取消', 'success')
+        // Refresh queue status
+        const statusRes = await fetch('/api/queue')
+        if (statusRes.ok) {
+          const statusData = await statusRes.json()
+          setQueueStatus(statusData)
+          try { sessionStorage.setItem('queueStatus', JSON.stringify(statusData)) } catch {}
+        }
+      } else {
+        const data = await res.json()
+        triggerToast(data.error || (isEnglish ? 'Failed to cancel' : '取消失败'), 'error')
+      }
+    } catch (err) {
+      console.error('Error cancelling:', err)
+      triggerToast(isEnglish ? 'Failed to cancel' : '取消失败', 'error')
+    }
+  }
+
   const generateMissing = async () => {
     setGeneratingMissing(true)
     try {
@@ -734,15 +778,24 @@ export default function Dashboard() {
                       {isEnglish ? 'Sync Queue' : '同步队列'}
                     </h3>
                   </div>
-                  {queueStatus.estimatedTimeRemaining && (
-                    <span className="text-[10px] text-slate-400">
-                      {isEnglish ? 'ETA' : '预计'}: ~{queueStatus.estimatedTimeRemaining} {isEnglish ? 'min' : '分钟'}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={startProcessing}
+                      className="p-1.5 rounded-lg bg-accent/20 text-accent hover:bg-accent hover:text-white transition-all"
+                      title={isEnglish ? 'Start Processing' : '开始处理'}
+                    >
+                      <Play className="w-3 h-3" />
+                    </button>
+                    {queueStatus.estimatedTimeRemaining && (
+                      <span className="text-[10px] text-slate-400">
+                        ~{queueStatus.estimatedTimeRemaining} {isEnglish ? 'min' : '分钟'}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  {queueStatus.queue.slice(0, 3).map((item) => (
-                    <div key={item.id} className="flex items-center gap-3 text-xs">
+                  {queueStatus.queue.slice(0, 5).map((item) => (
+                    <div key={item.id} className="flex items-center gap-2 text-xs">
                       {item.status === 'processing' ? (
                         <Loader2 className="w-3 h-3 animate-spin text-accent flex-shrink-0" />
                       ) : item.status === 'completed' ? (
@@ -752,23 +805,49 @@ export default function Dashboard() {
                       ) : (
                         <Clock className="w-3 h-3 text-slate-400 flex-shrink-0" />
                       )}
-                      <span className="truncate flex-1">{item.channelName}</span>
+                      <span className="truncate flex-1 min-w-0">{item.channelName}</span>
                       {item.status === 'processing' && (
-                        <span className="text-accent font-medium">
+                        <span className="text-accent font-medium whitespace-nowrap">
                           {item.progress.current}/{item.progress.total}
                         </span>
                       )}
                       {item.status === 'pending' && (
-                        <span className="text-slate-400">{isEnglish ? 'Waiting' : '等待中'}</span>
+                        <span className="text-slate-400 whitespace-nowrap">{isEnglish ? 'Waiting' : '等待'}</span>
                       )}
                       {item.status === 'completed' && item.result && (
-                        <span className="text-green-500">+{item.result.blogsGenerated}</span>
+                        <span className="text-green-500 whitespace-nowrap">+{item.result.blogsGenerated}</span>
                       )}
+                      {item.status === 'failed' && (
+                        <span className="text-red-400 whitespace-nowrap truncate max-w-[60px]" title={item.error || 'Error'}>
+                          {item.error ? 'Error' : (isEnglish ? 'Failed' : '失败')}
+                        </span>
+                      )}
+                      {/* Action buttons */}
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {(item.status === 'pending' || item.status === 'failed') && (
+                          <button
+                            onClick={() => startProcessing()}
+                            className="p-1 rounded hover:bg-accent/20 text-slate-400 hover:text-accent transition-all"
+                            title={isEnglish ? 'Retry' : '重试'}
+                          >
+                            <RefreshCw className="w-3 h-3" />
+                          </button>
+                        )}
+                        {item.status === 'pending' && (
+                          <button
+                            onClick={() => cancelQueueItem(item.id)}
+                            className="p-1 rounded hover:bg-red-100 text-slate-400 hover:text-red-500 transition-all"
+                            title={isEnglish ? 'Cancel' : '取消'}
+                          >
+                            <XCircle className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
-                  {queueStatus.queue.length > 3 && (
+                  {queueStatus.queue.length > 5 && (
                     <p className="text-[10px] text-slate-400 text-center pt-2">
-                      +{queueStatus.queue.length - 3} {isEnglish ? 'more' : '更多'}
+                      +{queueStatus.queue.length - 5} {isEnglish ? 'more' : '更多'}
                     </p>
                   )}
                 </div>
