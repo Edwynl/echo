@@ -260,16 +260,25 @@ export default function Dashboard() {
 
     try {
       if (activeIngestionTab === 'youtube') {
-        const isChannel = channelUrl.includes('list=') || 
-                         channelUrl.includes('/c/') || 
-                         channelUrl.includes('/channel/') || 
-                         channelUrl.includes('/user/') ||
-                         channelUrl.includes('/@')
-        
-        if (isChannel) {
+        // Detect if this is a channel URL vs video URL
+        // Channel indicators: /c/, /channel/, /user/, /@
+        // Video indicators: watch?v=, youtu.be/, /shorts/
+        const isVideoUrl = channelUrl.includes('watch?v=') ||
+                          channelUrl.includes('youtu.be/') ||
+                          channelUrl.includes('/shorts/')
+        const isChannelUrl = channelUrl.includes('/c/') ||
+                            channelUrl.includes('/channel/') ||
+                            channelUrl.includes('/user/') ||
+                            channelUrl.includes('/@')
+
+        if (isChannelUrl) {
           await addChannel(e)
-        } else {
+        } else if (isVideoUrl) {
           await addVideo(e)
+        } else {
+          // Fallback: try as channel
+          await addChannel(e)
+        }
         }
       } else if (activeIngestionTab === 'github') {
         const res = await fetch('/api/github/analyze-readme', {
