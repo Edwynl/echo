@@ -211,7 +211,13 @@ export default function Dashboard() {
         if (data.blogGenerated) {
           triggerToast(isEnglish ? 'Blog post generated successfully!' : '博客文章生成成功！', 'success')
         } else if (data.video) {
-          triggerToast(isEnglish ? 'Video added (no transcript - blog not generated)' : '视频已添加（无字幕，未生成博客）', 'info')
+          if (data.transcriptError) {
+            triggerToast(isEnglish ? 'Video added (transcript error)' : `视频已添加（字幕获取失败）`, 'info')
+          } else if (!data.transcriptAvailable) {
+            triggerToast(isEnglish ? 'Video added (no transcript)' : '视频已添加（无字幕）', 'info')
+          } else {
+            triggerToast(isEnglish ? 'Video added' : '视频已添加', 'success')
+          }
         } else {
           triggerToast(t.videoAddedSuccess, 'success')
         }

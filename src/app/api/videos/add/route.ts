@@ -92,11 +92,14 @@ export async function POST(request: NextRequest) {
     let blogGenerated = false
     let blogPost = null
     let transcriptText = ''
+    let transcriptError = null
 
     // Fetch transcript
     try {
+      console.log(`[Videos Add] Fetching transcript for: ${videoId}`)
       const transcriptData = await getTranscript(videoId)
       transcriptText = transcriptData.map(t => t.text).join(' ').slice(0, 20000)
+      console.log(`[Videos Add] Transcript length: ${transcriptText.length}`)
       if (transcriptText) {
         await prisma.video.update({
           where: { id: video.id },
@@ -105,8 +108,10 @@ export async function POST(request: NextRequest) {
       }
     } catch (e) {
       console.error('[Videos Add] Transcript error:', e)
+      transcriptError = e instanceof Error ? e.message : String(e)
       // Fallback to description if transcript unavailable
       transcriptText = videoDetails.description || ''
+      console.log(`[Videos Add] Fallback to description, length: ${transcriptText.length}`)
     }
 
     // Generate blog post if we have content
@@ -114,6 +119,7 @@ export async function POST(request: NextRequest) {
       const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`
 
       try {
+        console.log(`[Videos Add] Generating blog for: ${videoDetails.title}`)
         const blogContent = await minimaxService.generateBlogPost(
           videoDetails.title,
           videoDetails.description || '',
@@ -145,17 +151,21 @@ export async function POST(request: NextRequest) {
           }
         })
         blogGenerated = true
-        console.log(`[Videos Add] Blog generated: ${videoDetails.title}`)
+        console.log(`[Videos Add] Blog generated successfully: ${videoDetails.title}`)
       } catch (e) {
         console.error('[Videos Add] Blog generation error:', e)
       }
+    } else {
+      console.log(`[Videos Add] No transcript text, skipping blog generation`)
     }
 
     return NextResponse.json({
       video,
       channel,
-      blogPost,
       blogGenerated,
+      transcriptAvailable: !!transcriptText,
+      transcriptError,
+      blogPost,
       message: blogGenerated ? 'Video added and blog post generated' : 'Video added successfully'
     }, { status: 201 })
   } catch (error) {
