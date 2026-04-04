@@ -208,7 +208,13 @@ export default function Dashboard() {
       } else {
         setChannelUrl('')
         fetchData()
-        triggerToast(t.videoAddedSuccess, 'success')
+        if (data.blogGenerated) {
+          triggerToast(isEnglish ? 'Blog post generated successfully!' : '博客文章生成成功！', 'success')
+        } else if (data.video) {
+          triggerToast(isEnglish ? 'Video added (no transcript - blog not generated)' : '视频已添加（无字幕，未生成博客）', 'info')
+        } else {
+          triggerToast(t.videoAddedSuccess, 'success')
+        }
       }
     } catch (err) {
       setError(isEnglish ? 'Failed to add video' : '添加视频失败')
