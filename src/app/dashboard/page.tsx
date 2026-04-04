@@ -279,7 +279,6 @@ export default function Dashboard() {
           // Fallback: try as channel
           await addChannel(e)
         }
-        }
       } else if (activeIngestionTab === 'github') {
         const res = await fetch('/api/github/analyze-readme', {
           method: 'POST',
