@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { YouTubeService } from '@/services/youtube'
+import { MiniMaxService } from '@/services/minimax'
+import { getTranscript } from '@/lib/youtube-transcript'
+import { uniqueSlug, cleanExcerpt, truncate } from '@/lib/utils'
 
 const youtubeService = new YouTubeService()
+const minimaxService = new MiniMaxService()
 
-// POST /api/videos/add - Add a single video
+// POST /api/videos/add - Add a single video and generate blog post
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -82,10 +86,77 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    // ============================================================================
+    // Generate blog post
+    // ============================================================================
+    let blogGenerated = false
+    let blogPost = null
+    let transcriptText = ''
+
+    // Fetch transcript
+    try {
+      const transcriptData = await getTranscript(videoId)
+      transcriptText = transcriptData.map(t => t.text).join(' ').slice(0, 20000)
+      if (transcriptText) {
+        await prisma.video.update({
+          where: { id: video.id },
+          data: { hasTranscript: true, transcript: transcriptText }
+        })
+      }
+    } catch (e) {
+      console.error('[Videos Add] Transcript error:', e)
+      // Fallback to description if transcript unavailable
+      transcriptText = videoDetails.description || ''
+    }
+
+    // Generate blog post if we have content
+    if (transcriptText) {
+      const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`
+
+      try {
+        const blogContent = await minimaxService.generateBlogPost(
+          videoDetails.title,
+          videoDetails.description || '',
+          transcriptText,
+          channel.name,
+          youtubeUrl,
+          videoDetails.thumbnail || ''
+        )
+
+        let finalExcerpt = truncate(cleanExcerpt(videoDetails.description || videoDetails.title), 160)
+        let finalContent = blogContent
+        const summaryMatch = blogContent.match(/\[SUMMARY_START\]([\s\S]*?)\[SUMMARY_END\]/)
+        if (summaryMatch?.[1]) {
+          finalExcerpt = summaryMatch[1].trim()
+          finalContent = blogContent.replace(/\[SUMMARY_START\][\s\S]*?\[SUMMARY_END\]/, '').trim()
+        }
+
+        blogPost = await prisma.blogPost.create({
+          data: {
+            title: videoDetails.title,
+            slug: uniqueSlug(videoDetails.title),
+            content: finalContent,
+            excerpt: finalExcerpt,
+            coverImage: videoDetails.thumbnail,
+            status: 'published',
+            videoId: video.id,
+            sourceUrl: youtubeUrl,
+            publishedAt: new Date()
+          }
+        })
+        blogGenerated = true
+        console.log(`[Videos Add] Blog generated: ${videoDetails.title}`)
+      } catch (e) {
+        console.error('[Videos Add] Blog generation error:', e)
+      }
+    }
+
     return NextResponse.json({
       video,
       channel,
-      message: 'Video added successfully'
+      blogPost,
+      blogGenerated,
+      message: blogGenerated ? 'Video added and blog post generated' : 'Video added successfully'
     }, { status: 201 })
   } catch (error) {
     console.error('Error adding video:', error)
