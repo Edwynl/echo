@@ -208,6 +208,27 @@ export default function Dashboard() {
       } else {
         setChannelUrl('')
         fetchData()
+
+        // Also add channel to queue for sync tracking
+        if (data.channel?.id) {
+          try {
+            await fetch('/api/queue/add', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ channelId: data.channel.id })
+            })
+          } catch {}
+          // Refresh queue status
+          try {
+            const statusRes = await fetch('/api/queue')
+            if (statusRes.ok) {
+              const statusData = await statusRes.json()
+              setQueueStatus(statusData)
+              try { sessionStorage.setItem('queueStatus', JSON.stringify(statusData)) } catch {}
+            }
+          } catch {}
+        }
+
         if (data.blogGenerated) {
           triggerToast(isEnglish ? 'Blog post generated successfully!' : '博客文章生成成功！', 'success')
         } else if (data.video) {
